@@ -66,6 +66,18 @@ typedef enum
     TELEPHONY_NETWORK_TYPE_LTE,     /**< LTE network type */
 } telephony_network_type_e;
 
+/**
+ * @brief Enumeration for PS Type.
+ * @since_tizen 2.4
+ */
+typedef enum
+{
+    TELEPHONY_NETWORK_PS_TYPE_UNKNOWN, /**< Unknown */
+    TELEPHONY_NETWORK_PS_TYPE_HSDPA,    /**< HSDPA ps type */
+    TELEPHONY_NETWORK_PS_TYPE_HSUPA,    /**< HSUPA ps type */
+    TELEPHONY_NETWORK_PS_TYPE_HSPA,      /**< HSPA ps type */
+    TELEPHONY_NETWORK_PS_TYPE_HSPAP,   /**< HSPAP ps type */
+} telephony_network_ps_type_e;
 
 /**
  * @brief Enumeration for Network Service State.
@@ -77,6 +89,38 @@ typedef enum
     TELEPHONY_NETWORK_SERVICE_STATE_OUT_OF_SERVICE, /**< Out of service */
     TELEPHONY_NETWORK_SERVICE_STATE_EMERGENCY_ONLY, /**< Only emergency call is allowed */
 } telephony_network_service_state_e;
+
+/**
+ * @brief Enumeration for Network Name Priority.
+ * @since_tizen 2.4
+ */
+typedef enum
+{
+    TELEPHONY_NETWORK_NAME_OPTION_UNKNOWN, /**< Unknown */
+    TELEPHONY_NETWORK_NAME_OPTION_SPN,     /**< Network name displayed by SPN */
+    TELEPHONY_NETWORK_NAME_OPTION_NETWORK, /**< Network name displayed by Network */
+    TELEPHONY_NETWORK_NAME_OPTION_ANY,    /**< Network name displayed by SPN or Network */
+} telephony_network_name_option_e;
+
+/**
+ * @brief Enumeration for the possible 'default' Data Subscriptions for Packet Switched(PS).
+ * @since_tizen 2.4
+ */
+typedef enum {
+	TELEPHONY_NETWORK_DEFAULT_DATA_SUBS_UNKNOWN = -1,  /**< Unknown status */
+	TELEPHONY_NETWORK_DEFAULT_DATA_SUBS_SIM1 = 0,      /**< SIM 1 */
+	TELEPHONY_NETWORK_DEFAULT_DATA_SUBS_SIM2           /**< SIM 2 */
+} telephony_network_default_data_subs_e;
+
+/**
+ * @brief Enumeration defines possible 'default' Subscriptions for Circuit Switched(CS).
+ * @since_tizen 2.4
+ */
+typedef enum {
+	TELEPHONY_NETWORK_DEFAULT_SUBS_UNKNOWN = -1,  /**<  Unknown status **/
+	TELEPHONY_NETWORK_DEFAULT_SUBS_SIM1 = 0, /**< SIM 1 network **/
+	TELEPHONY_NETWORK_DEFAULT_SUBS_SIM2 /**<  SIM 2 network **/
+} telephony_network_default_subs_e;
 
 /**
  * @brief Gets the LAC (Location Area Code) of the current network.
@@ -290,6 +334,57 @@ int telephony_network_get_type(telephony_h handle,
     telephony_network_type_e *network_type);
 
 /**
+ * @brief Gets the packet service type of the current registered network.
+ *
+ * @since_tizen 2.4
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/telephony
+ *
+ * @param[in] handle The handle from telephony_init()
+ * @param[out] ps_type The type of packet service
+ *
+ * @return @c 0 on success,
+ *         otherwise a negative error value
+ *
+ * @retval #TELEPHONY_ERROR_NONE              Successful
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
+ * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
+ *
+ * @pre The Network service state must be #TELEPHONY_NETWORK_SERVICE_STATE_IN_SERVICE.
+ *
+ * @see telephony_network_get_service_state()
+ */
+int telephony_network_get_ps_type(telephony_h handle, telephony_network_ps_type_e *ps_type);
+
+/**
+ * @brief Gets the network name option of the current registered network.
+ *
+ * @since_tizen 2.4
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/telephony
+ *
+ * @param[in] handle The handle from telephony_init()
+ * @param[out] network_name_option The network name display option
+ *
+ * @return @c 0 on success,
+ *         otherwise a negative error value
+ *
+ * @retval #TELEPHONY_ERROR_NONE              Successful
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
+ * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
+ *
+ * @pre The Network service state must be #TELEPHONY_NETWORK_SERVICE_STATE_IN_SERVICE.
+ *
+ * @see telephony_network_get_service_state()
+ */
+int telephony_network_get_network_name_option(telephony_h handle,
+    telephony_network_name_option_e *network_name_option);
+
+/**
  * @brief Gets the current network state of the telephony service.
  *
  * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 2.3.1 @endif
@@ -312,6 +407,52 @@ int telephony_network_get_type(telephony_h handle,
  */
 int telephony_network_get_service_state(telephony_h handle,
     telephony_network_service_state_e *network_service_state);
+
+/**
+ * @brief Gets the current default subscription for data service (Packet Switched).
+ *
+ * @since_tizen 2.4
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/telephony
+ *
+ *
+ * @param[in] handle The handle from telephony_init()
+ * @param[out] default_sub The current default data subscription
+ *
+ * @return @c 0 on success,
+ *         otherwise a negative error value
+ *
+ * @retval #TELEPHONY_ERROR_NONE              Successful
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
+ * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
+ */
+int telephony_network_get_default_data_subscription(telephony_h handle,
+	telephony_network_default_data_subs_e *default_sub);
+
+/**
+ * @brief Gets the current default subscription for voice service (Circuit Switched).
+ *
+ * @since_tizen 2.4
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/telephony
+ *
+ *
+ * @param[in] handle The handle from telephony_init()
+ * @param[out] default_sub The current default voice subscription
+ *
+ * @return @c 0 on success,
+ *         otherwise a negative error value
+ *
+ * @retval #TELEPHONY_ERROR_NONE              Successful
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
+ * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
+ */
+int telephony_network_get_default_subscription(telephony_h handle,
+	telephony_network_default_subs_e *default_sub);
 
 /**
  * @}

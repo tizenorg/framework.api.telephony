@@ -34,6 +34,19 @@ extern "C" {
  */
 
 /**
+ * @brief Enumeration for Modem Power Status.
+ * @since_tizen 2.4
+ */
+typedef enum
+{
+    TELEPHONY_MODEM_POWER_STATUS_UNKNOWN = -1, /**< Unknown*/
+    TELEPHONY_MODEM_POWER_STATUS_ON, /**< Modem power ON */
+    TELEPHONY_MODEM_POWER_STATUS_OFF,     /**< Modem power OFF */
+    TELEPHONY_MODEM_POWER_STATUS_RESET, /**< Modem power RESET */
+    TELEPHONY_MODEM_POWER_STATUS_LOW,    /**< Modem power LOW */
+} telephony_modem_power_status_e;
+
+/**
  * @brief Gets the IMEI (International Mobile Station Equipment Identity) of a mobile phone.
  * @details The IMEI number is used by a GSM network to identify valid devices
  *          and therefore can be used for stopping a stolen phone from accessing that network.
@@ -57,6 +70,28 @@ extern "C" {
  * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
  */
 int telephony_modem_get_imei(telephony_h handle, char **imei);
+
+/**
+ * @brief Gets the power status of the modem
+ *
+ * @since_tizen 2.4
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/telephony
+ *
+ * @param[in] handle The handle from telephony_init()
+ * @param[out] status The Modem power status (0=on,1=off,2=reset,3=low)
+ *
+ * @return @c 0 on success,
+ *         otherwise a negative error value
+ *
+ * @retval #TELEPHONY_ERROR_NONE              Successful
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
+ * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
+ */
+int telephony_modem_get_power_status(telephony_h handle,
+	telephony_modem_power_status_e *status);
 
 /**
  * @}

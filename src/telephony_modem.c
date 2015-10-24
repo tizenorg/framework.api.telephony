@@ -27,17 +27,6 @@
 #include "telephony_modem.h"
 #include "telephony_private.h"
 
-#ifdef LOG_TAG
-#undef LOG_TAG
-#endif
-#define LOG_TAG "CAPI_TELEPHONY"
-
-#define CHECK_INPUT_PARAMETER(arg) \
-	if (arg == NULL) { \
-		LOGE("INVALID_PARAMETER"); \
-		return TELEPHONY_ERROR_INVALID_PARAMETER; \
-	}
-
 int telephony_modem_get_imei(telephony_h handle, char **imei)
 {
 	GVariant *gv = NULL;
@@ -75,4 +64,52 @@ int telephony_modem_get_imei(telephony_h handle, char **imei)
 	}
 
 	return error;
+}
+
+int telephony_modem_get_power_status(telephony_h handle,
+	telephony_modem_power_status_e *status)
+{
+	TapiHandle *tapi_h;
+	int ret;
+	tapi_power_phone_power_status_t modem_status = TAPI_PHONE_POWER_STATUS_UNKNOWN;
+
+	CHECK_TELEPHONY_SUPPORTED(TELEPHONY_FEATURE);
+	CHECK_INPUT_PARAMETER(handle);
+	tapi_h = ((telephony_data *)handle)->tapi_h;
+	CHECK_INPUT_PARAMETER(tapi_h);
+	CHECK_INPUT_PARAMETER(status);
+
+	ret = tel_check_modem_power_status(tapi_h, &modem_status);
+	if (ret == TAPI_API_ACCESS_DENIED) {
+		LOGE("PERMISSION_DENIED");
+		return TELEPHONY_ERROR_PERMISSION_DENIED;
+	} else if (ret != TAPI_API_SUCCESS) {
+		LOGE("OPERATION_FAILED");
+		return TELEPHONY_ERROR_OPERATION_FAILED;
+	} else {
+		switch (modem_status) {
+		case TAPI_PHONE_POWER_STATUS_ON:
+			*status = TELEPHONY_MODEM_POWER_STATUS_ON;
+			break;
+		case TAPI_PHONE_POWER_STATUS_OFF:
+			*status = TELEPHONY_MODEM_POWER_STATUS_OFF;
+			break;
+		case TAPI_PHONE_POWER_STATUS_RESET:
+			*status = TELEPHONY_MODEM_POWER_STATUS_RESET;
+			break;
+		case TAPI_PHONE_POWER_STATUS_LOW:
+			*status = TELEPHONY_MODEM_POWER_STATUS_LOW;
+			break;
+		case TAPI_PHONE_POWER_STATUS_UNKNOWN:
+		case TAPI_PHONE_POWER_STATUS_ERROR:
+		default:
+			*status = TELEPHONY_MODEM_POWER_STATUS_UNKNOWN;
+			break;
+		}
+	}
+
+	LOGI("modem_power_status = %d (0=on,1=off,2=rst,3=low)", *status);
+
+	return TELEPHONY_ERROR_NONE;
+
 }

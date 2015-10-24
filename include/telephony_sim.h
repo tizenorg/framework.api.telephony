@@ -45,6 +45,19 @@ typedef enum
     TELEPHONY_SIM_STATE_UNKNOWN,     /**< SIM is in transition between states */
 } telephony_sim_state_e;
 
+
+/**
+ * @brief Enumeration for the type of SIM card .
+ * @since_tizen 2.4
+ */
+typedef enum {
+	TELEPHONY_SIM_APP_TYPE_SIM = 0x01, /**< SIM(GSM) Application */
+	TELEPHONY_SIM_APP_TYPE_USIM = 0x02, /**< USIM Application */
+	TELEPHONY_SIM_APP_TYPE_CSIM = 0x04, /**< CDMA Application */
+	TELEPHONY_SIM_APP_TYPE_ISIM = 0x08, /**< ISIM Application */
+} telephony_sim_application_type_e;
+
+
 /**
  * @brief Gets the Integrated Circuit Card IDentification (ICC-ID).
  * @details The Integrated Circuit Card Identification number internationally identifies SIM cards.
@@ -62,10 +75,10 @@ typedef enum
  *         otherwise a negative error value
  *
  * @retval #TELEPHONY_ERROR_NONE              Successful
- * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Out of memory
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
  * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
  * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
- * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Invalid parameter
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
  * @retval #TELEPHONY_ERROR_SIM_NOT_AVAILABLE SIM is not available
  *
  * @pre The SIM state must be #TELEPHONY_SIM_STATE_AVAILABLE.
@@ -91,10 +104,10 @@ int telephony_sim_get_icc_id(telephony_h handle, char **icc_id);
  *         otherwise a negative error value
  *
  * @retval #TELEPHONY_ERROR_NONE              Successful
- * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Out of memory
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
  * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
  * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
- * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Invalid parameter
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
  * @retval #TELEPHONY_ERROR_SIM_NOT_AVAILABLE SIM is not available
  *
  * @pre The SIM state must be #TELEPHONY_SIM_STATE_AVAILABLE.
@@ -120,10 +133,10 @@ int telephony_sim_get_operator(telephony_h handle, char **sim_operator);
  *         otherwise a negative error value
  *
  * @retval #TELEPHONY_ERROR_NONE              Successful
- * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Out of memory
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
  * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
  * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
- * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Invalid parameter
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
  * @retval #TELEPHONY_ERROR_SIM_NOT_AVAILABLE SIM is not available
  *
  * @pre The SIM state must be #TELEPHONY_SIM_STATE_AVAILABLE.
@@ -135,7 +148,8 @@ int telephony_sim_get_msin(telephony_h handle, char **msin);
 /**
  * @brief Gets the Service Provider Name (SPN) of the SIM card.
  * @details This function gets Service Provider Name embedded in the SIM card.
- *          If this value is not stored in SIM card, @c NULL will be returned.
+ *          If this value is not stored in SIM card,
+ *          negative error returned and @c NULL will be stored in @c spn.
  *
  * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 2.3.1 @endif
  * @privlevel public
@@ -150,10 +164,10 @@ int telephony_sim_get_msin(telephony_h handle, char **msin);
  *         otherwise a negative error value
  *
  * @retval #TELEPHONY_ERROR_NONE              Successful
- * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Out of memory
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
  * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
  * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
- * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Invalid parameter
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
  * @retval #TELEPHONY_ERROR_SIM_NOT_AVAILABLE SIM is not available
  *
  * @pre The SIM state must be #TELEPHONY_SIM_STATE_AVAILABLE.
@@ -177,10 +191,10 @@ int telephony_sim_get_spn(telephony_h handle, char **spn);
  *         otherwise a negative error value
  *
  * @retval #TELEPHONY_ERROR_NONE              Successful
- * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Out of memory
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
  * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
  * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
- * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Invalid parameter
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
  * @retval #TELEPHONY_ERROR_SIM_NOT_AVAILABLE SIM is not available
  *
  * @pre The SIM state must be #TELEPHONY_SIM_STATE_AVAILABLE.
@@ -203,18 +217,44 @@ int telephony_sim_is_changed(telephony_h handle, bool *is_changed);
  *         otherwise a negative error value
  *
  * @retval #TELEPHONY_ERROR_NONE              Successful
- * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Out of memory
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
  * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
  * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
- * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Invalid parameter
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
  */
 int telephony_sim_get_state(telephony_h handle, telephony_sim_state_e *sim_state);
+
+/**
+ * @brief Gets the list of application on UICC.
+ *
+ * @since_tizen 2.4
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/telephony
+ *
+ * @param[in] handle The handle from telephony_init()
+ * @param[out] app_list The masking value for below values
+ *                      #TELEPHONY_SIM_APP_TYPE_SIM 0x01 GSM Application
+ *                      #TELEPHONY_SIM_APP_TYPE_USIM 0x02 USIM Application
+ *                      #TELEPHONY_SIM_APP_TYPE_CSIM 0x04 CSIM Application
+ *                      #TELEPHONY_SIM_APP_TYPE_ISIM 0x08 ISIM Application
+ *
+ * @return @c 0 on success,
+ *         otherwise a negative error value
+ *
+ * @retval #TELEPHONY_ERROR_NONE              Successful
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
+ * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
+ */
+int telephony_sim_get_application_list(telephony_h handle, unsigned int *app_list);
 
 /**
  * @brief Gets the SIM card subscriber number.
  * @details This function gets subscriber number embedded in the SIM card.
  *          This value contains MSISDN related to the subscriber.
- *          If this value is not stored in SIM card, @c NULL will be returned.
+ *          If this value is not stored in SIM card,
+ *          negative error returned and @c NULL will be stored in @c subscriber_number.
  *
  * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 2.3.1 @endif
  * @privlevel public
@@ -229,10 +269,10 @@ int telephony_sim_get_state(telephony_h handle, telephony_sim_state_e *sim_state
  *         otherwise a negative error value
  *
  * @retval #TELEPHONY_ERROR_NONE              Successful
- * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Out of memory
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
  * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
  * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
- * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Invalid parameter
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
  * @retval #TELEPHONY_ERROR_SIM_NOT_AVAILABLE SIM is not available
  *
  * @pre The SIM state must be #TELEPHONY_SIM_STATE_AVAILABLE.
@@ -240,6 +280,32 @@ int telephony_sim_get_state(telephony_h handle, telephony_sim_state_e *sim_state
  * @see telephony_sim_get_state()
  */
 int telephony_sim_get_subscriber_number(telephony_h handle, char **subscriber_number);
+
+/**
+ * @brief Gets the Subscriber ID.
+ * @details This function gets subscriber ID encoded.
+ *
+ * @since_tizen 2.4
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/telephony
+ *
+ * @remarks You must release @c subscriber_id using free().
+ *
+ * @param[in] handle The handle from telephony_init()
+ * @param[out] subscriber_id The subscriber ID
+ *
+ * @retval #TELEPHONY_ERROR_NONE              Successful
+ * @retval #TELEPHONY_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #TELEPHONY_ERROR_PERMISSION_DENIED Permission denied
+ * @retval #TELEPHONY_ERROR_NOT_SUPPORTED     Not supported
+ * @retval #TELEPHONY_ERROR_OPERATION_FAILED  Operation failed
+ * @retval #TELEPHONY_ERROR_SIM_NOT_AVAILABLE SIM is not available
+ *
+ * @pre The SIM state must be #TELEPHONY_SIM_STATE_AVAILABLE.
+ *
+ * @see telephony_sim_get_state()
+ */
+int telephony_sim_get_subscriber_id(telephony_h handle, char **subscriber_id);
 
 /**
  * @}

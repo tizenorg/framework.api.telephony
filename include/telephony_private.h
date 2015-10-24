@@ -21,8 +21,20 @@
 #include <glib.h>
 #include <system_info.h>
 #include "telephony_common.h"
+#include "telephony_call.h"
 
 #define TELEPHONY_FEATURE	"http://tizen.org/feature/network.telephony"
+
+#ifdef LOG_TAG
+#undef LOG_TAG
+#endif
+#define LOG_TAG "CAPI_TELEPHONY"
+
+#define CHECK_INPUT_PARAMETER(arg) \
+	if (arg == NULL) { \
+		LOGE("INVALID_PARAMETER"); \
+		return TELEPHONY_ERROR_INVALID_PARAMETER; \
+	}
 
 #define CHECK_TELEPHONY_SUPPORTED(feature_name) { \
 	bool telephony_supported = FALSE; \
@@ -36,6 +48,12 @@
 		return TELEPHONY_ERROR_OPERATION_FAILED; \
 	} \
 }
+
+/**
+ * @brief Definition for the max length of call number
+ * @since_tizen 2.4
+ */
+#define TELEPHONY_CALL_NUMBER_LEN_MAX 82
 
 typedef struct {
 	GSList *evt_list;
@@ -57,5 +75,18 @@ struct tapi_handle {
 	GHashTable *cache_property;
 	guint prop_callback_evt_id;
 };
+
+/**
+ * @brief The structure type for the call information.
+ * @since_tizen 2.4
+ */
+typedef struct {
+	unsigned int id; /**< The handle of the call */
+	char number[TELEPHONY_CALL_NUMBER_LEN_MAX + 1]; /**< Calling number */
+	telephony_call_type_e type; /**< Type of call (voice, video, emergency) */
+	telephony_call_status_e status; /**< Call Status */
+	telephony_call_direction_e direction; /**< Call direction (MO, MT) */
+	bool conference_status; /**< true: Conference call, false: Single call */
+} telephony_call_info_s;
 
 #endif /* __CAPI_TELEPHONY_PRIVATE_H__ */

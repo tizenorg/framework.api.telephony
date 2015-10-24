@@ -6,7 +6,7 @@ SET(version "0.0.1")
 SET(maintainer "Wootak Jung<wootak.jung@samsung.com>")
 SET(description "Telephony Core API")
 SET(service "telephony")
-SET(dependents "dlog tapi glib-2.0 capi-base-common capi-system-info")
+SET(dependents "dlog tapi glib-2.0 capi-base-common openssl capi-system-info")
 SET(pc_dependents "capi-base-common tapi")
 
 SET(Services
@@ -59,7 +59,7 @@ FOREACH(flag ${${fw_name}_CFLAGS})
     SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
-SET(ADDITIONAL_CFLAGS "-Wdeclaration-after-statement -Wmissing-declarations -Wredundant-decls -Wcast-align -Wno-array-bounds -Wno-empty-body -Wno-ignored-qualifiers -Wshadow -Wwrite-strings -Wswitch-default -Wno-unused-but-set-parameter -Wno-unused-but-set-variable -Wcast-qual")
+SET(ADDITIONAL_CFLAGS "-Wdeclaration-after-statement -Wmissing-declarations -Wredundant-decls -Wcast-align -Wno-array-bounds -Wno-empty-body -Wno-ignored-qualifiers -Wshadow -Wwrite-strings -Wswitch-default -Wno-unused-but-set-parameter -Wno-unused-but-set-variable")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -fPIC -Wall -Werror")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ADDITIONAL_CFLAGS}")
 SET(CMAKE_C_FLAGS_DEBUG "-O0 -g")

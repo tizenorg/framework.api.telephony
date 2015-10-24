@@ -20,17 +20,13 @@
 #include <glib.h>
 #include <gio/gio.h>
 #include <dlog.h>
+#include <openssl/sha.h>
 
 #include <tapi_common.h>
 #include <TapiUtility.h>
 #include <ITapiSim.h>
 #include "telephony_sim.h"
 #include "telephony_private.h"
-
-#ifdef LOG_TAG
-#undef LOG_TAG
-#endif
-#define LOG_TAG "CAPI_TELEPHONY"
 
 #define DBUS_SIM_STATUS_ERROR "SIM STATUS ERROR"
 #define DBUS_SIM_NOT_FOUND "SIM NOT FOUND"
@@ -42,12 +38,6 @@
 #define DBUS_SIM_NOT_READY "SIM NOT READY"
 #define DBUS_SIM_RESPONSE_DATA_ERROR "SIM RESPONSE DATA ERROR"
 #define DBUS_SIM_ACCESS_DENIED "No access rights"
-
-#define CHECK_INPUT_PARAMETER(arg) \
-	if (arg == NULL) { \
-		LOGE("INVALID_PARAMETER"); \
-		return TELEPHONY_ERROR_INVALID_PARAMETER; \
-	}
 
 #define GET_SIM_STATUS(tapi_h, sim_card_state) { \
 	int card_changed = 0; \
@@ -126,11 +116,10 @@ int telephony_sim_get_icc_id(telephony_h handle, char **icc_id)
 		if (sync_gv) {
 			g_variant_get(sync_gv, "(is)", &result, &iccid);
 			if (result == TAPI_SIM_ACCESS_SUCCESS) {
-				if (iccid != NULL && strlen(iccid) != 0) {
+				if (iccid != NULL && strlen(iccid) != 0)
 					*icc_id = g_strdup_printf("%s", iccid);
-				} else {
+				else
 					*icc_id = g_strdup_printf("%s", "");
-				}
 			} else {
 				error_code = TELEPHONY_ERROR_OPERATION_FAILED;
 			}
@@ -343,6 +332,32 @@ int telephony_sim_get_state(telephony_h handle, telephony_sim_state_e *sim_state
 	return error_code;
 }
 
+int telephony_sim_get_application_list(telephony_h handle, unsigned int *app_list)
+{
+	TapiHandle *tapi_h;
+	unsigned char tapi_app_list;
+	int ret;
+
+	CHECK_TELEPHONY_SUPPORTED(TELEPHONY_FEATURE);
+	CHECK_INPUT_PARAMETER(handle);
+	tapi_h = ((telephony_data *)handle)->tapi_h;
+	CHECK_INPUT_PARAMETER(tapi_h);
+	CHECK_INPUT_PARAMETER(app_list);
+
+	ret = tel_get_sim_application_list(tapi_h, &tapi_app_list);
+	if (ret == TAPI_API_ACCESS_DENIED) {
+		LOGE("PERMISSION_DENIED");
+		return TELEPHONY_ERROR_PERMISSION_DENIED;
+	} else if (ret != TAPI_API_SUCCESS) {
+		LOGE("OPERATION_FAILED");
+		return TELEPHONY_ERROR_OPERATION_FAILED;
+	}
+
+	*app_list = (unsigned int)tapi_app_list;
+	LOGI("SIM Application List: [0x%x]", *app_list);
+	return TELEPHONY_ERROR_NONE;
+}
+
 int telephony_sim_get_subscriber_number(telephony_h handle, char **subscriber_number)
 {
 	int error_code = TELEPHONY_ERROR_NONE;
@@ -374,9 +389,8 @@ int telephony_sim_get_subscriber_number(telephony_h handle, char **subscriber_nu
 				while (g_variant_iter_loop(iter_row, "{sv}", &key, &value)) {
 					if (!g_strcmp0(key, "number")) {
 						str_value = g_variant_get_string(value, NULL);
-						if (str_value != NULL && strlen(str_value) != 0) {
+						if (str_value != NULL && strlen(str_value) != 0)
 							*subscriber_number = g_strdup_printf("%s", str_value);
-						}
 					}
 				}
 				g_variant_iter_free(iter_row);
@@ -393,6 +407,55 @@ int telephony_sim_get_subscriber_number(telephony_h handle, char **subscriber_nu
 		LOGE("g_dbus_conn failed. error (%s)", gerr->message);
 		error_code = _convert_dbus_errmsg_to_sim_error(gerr->message);
 		g_error_free(gerr);
+	}
+
+	return error_code;
+}
+
+int telephony_sim_get_subscriber_id(telephony_h handle, char **subscriber_id)
+{
+	int error_code = TELEPHONY_ERROR_NONE;
+	TelSimCardStatus_t sim_card_state = TAPI_SIM_STATUS_UNKNOWN;
+	TapiHandle *tapi_h;
+
+	CHECK_TELEPHONY_SUPPORTED(TELEPHONY_FEATURE);
+	CHECK_INPUT_PARAMETER(handle);
+	tapi_h = ((telephony_data *)handle)->tapi_h;
+	CHECK_INPUT_PARAMETER(tapi_h);
+	CHECK_INPUT_PARAMETER(subscriber_id);
+	GET_SIM_STATUS(tapi_h, sim_card_state);
+
+	*subscriber_id = NULL;
+	if (sim_card_state != TAPI_SIM_STATUS_SIM_INIT_COMPLETED) {
+		error_code = TELEPHONY_ERROR_SIM_NOT_AVAILABLE;
+	} else {
+		TelSimImsiInfo_t imsi_info;
+		error_code = tel_get_sim_imsi(tapi_h, &imsi_info);
+		if (error_code == TAPI_API_SUCCESS) {
+			SHA256_CTX ctx;
+			char *imsi;
+			unsigned char md[SHA256_DIGEST_LENGTH];
+			int i;
+
+			imsi = g_strdup_printf("%s%s%s",
+				imsi_info.szMcc, imsi_info.szMnc, imsi_info.szMsin);
+
+			SHA256_Init(&ctx);
+			SHA256_Update(&ctx, imsi, strlen(imsi));
+			SHA256_Final(md, &ctx);
+
+			*subscriber_id = g_malloc0(SHA256_DIGEST_LENGTH * 2 + 1);
+			for (i = 0; i < SHA256_DIGEST_LENGTH; i++)
+				snprintf(*subscriber_id + (i * 2), 3,  "%02x", md[i]);
+			LOGI("Subscriber ID: [%s]", *subscriber_id);
+			g_free(imsi);
+		} else if (error_code == TAPI_API_ACCESS_DENIED) {
+			LOGE("get_subscriber_id: PERMISSION_DENIED");
+			error_code = TELEPHONY_ERROR_PERMISSION_DENIED;
+		} else {
+			LOGE("get_subscriber_id: OPERATION_FAILED");
+			error_code = TELEPHONY_ERROR_OPERATION_FAILED;
+		}
 	}
 
 	return error_code;

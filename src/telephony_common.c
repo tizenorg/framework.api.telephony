@@ -23,14 +23,10 @@
 #include <dlog.h>
 
 #include <tapi_common.h>
+#include <TelCall.h>
 #include <TelSim.h>
 #include <TelNetwork.h>
 #include <TapiUtility.h>
-
-#ifdef LOG_TAG
-#undef LOG_TAG
-#endif
-#define LOG_TAG "CAPI_TELEPHONY"
 
 #define CALLBACK_CALL(data) \
 	if (evt_cb_data->cb) { \
@@ -38,10 +34,18 @@
 			 evt_cb_data->noti_id, data, evt_cb_data->user_data); \
 	}
 
-#define CHECK_INPUT_PARAMETER(arg) \
-	if (arg == NULL) { \
-		LOGE("INVALID_PARAMETER"); \
-		return TELEPHONY_ERROR_INVALID_PARAMETER; \
+/* Handle deprecated noti_id for backward compatibility */
+#define CALLBACK_CALL_FOR_DEPRECATED_NOTI(evt_cb_data) \
+	if (evt_cb_data->noti_id == TELEPHONY_NOTI_VOICE_CALL_STATE) { \
+		telephony_call_state_e call_state; \
+		telephony_call_get_voice_call_state(evt_cb_data->handle, &call_state); \
+		CALLBACK_CALL(&call_state); \
+		return; \
+	} else if (evt_cb_data->noti_id == TELEPHONY_NOTI_VIDEO_CALL_STATE) { \
+		telephony_call_state_e call_state; \
+		telephony_call_get_video_call_state(evt_cb_data->handle, &call_state); \
+		CALLBACK_CALL(&call_state); \
+		return; \
 	}
 
 typedef struct {
@@ -81,6 +85,38 @@ static const char *_mapping_noti_id(telephony_noti_e noti_id)
 		return TAPI_PROP_NETWORK_ROAMING_STATUS;
 	case TELEPHONY_NOTI_NETWORK_SIGNALSTRENGTH_LEVEL:
 		return TAPI_PROP_NETWORK_SIGNALSTRENGTH_LEVEL;
+	case TELEPHONY_NOTI_NETWORK_NETWORK_NAME:
+		return TAPI_PROP_NETWORK_NETWORK_NAME;
+	case TELEPHONY_NOTI_CALL_PREFERRED_VOICE_SUBSCRIPTION:
+		return TAPI_NOTI_CALL_PREFERRED_VOICE_SUBSCRIPTION;
+	case TELEPHONY_NOTI_NETWORK_PS_TYPE:
+		return TAPI_PROP_NETWORK_PS_TYPE;
+	case TELEPHONY_NOTI_NETWORK_DEFAULT_DATA_SUBSCRIPTION:
+		return TAPI_NOTI_NETWORK_DEFAULT_DATA_SUBSCRIPTION;
+	case TELEPHONY_NOTI_NETWORK_DEFAULT_SUBSCRIPTION:
+		return TAPI_NOTI_NETWORK_DEFAULT_SUBSCRIPTION;
+	case TELEPHONY_NOTI_VOICE_CALL_STATUS_IDLE:
+		return TAPI_NOTI_VOICE_CALL_STATUS_IDLE;
+	case TELEPHONY_NOTI_VOICE_CALL_STATUS_ACTIVE:
+		return TAPI_NOTI_VOICE_CALL_STATUS_ACTIVE;
+	case TELEPHONY_NOTI_VOICE_CALL_STATUS_HELD:
+		return TAPI_NOTI_VOICE_CALL_STATUS_HELD;
+	case TELEPHONY_NOTI_VOICE_CALL_STATUS_DIALING:
+		return TAPI_NOTI_VOICE_CALL_STATUS_DIALING;
+	case TELEPHONY_NOTI_VOICE_CALL_STATUS_ALERTING:
+		return TAPI_NOTI_VOICE_CALL_STATUS_ALERT;
+	case TELEPHONY_NOTI_VOICE_CALL_STATUS_INCOMING:
+		return TAPI_NOTI_VOICE_CALL_STATUS_INCOMING;
+	case TELEPHONY_NOTI_VIDEO_CALL_STATUS_IDLE:
+		return TAPI_NOTI_VIDEO_CALL_STATUS_IDLE;
+	case TELEPHONY_NOTI_VIDEO_CALL_STATUS_ACTIVE:
+		return TAPI_NOTI_VIDEO_CALL_STATUS_ACTIVE;
+	case TELEPHONY_NOTI_VIDEO_CALL_STATUS_DIALING:
+		return TAPI_NOTI_VIDEO_CALL_STATUS_DIALING;
+	case TELEPHONY_NOTI_VIDEO_CALL_STATUS_ALERTING:
+		return TAPI_NOTI_VIDEO_CALL_STATUS_ALERT;
+	case TELEPHONY_NOTI_VIDEO_CALL_STATUS_INCOMING:
+		return TAPI_NOTI_VIDEO_CALL_STATUS_INCOMING;
 	default:
 		return NULL;
 	}
@@ -162,24 +198,21 @@ static telephony_error_e __deregister_all_noti(telephony_h handle, telephony_not
 		int count = sizeof(voice_call_state_tbl) / sizeof(char *);
 		for (i = 0; i < count; i++) {
 			ret = tel_deregister_noti_event(tapi_h, voice_call_state_tbl[i]);
-			if (ret != TAPI_API_SUCCESS) {
+			if (ret != TAPI_API_SUCCESS)
 				LOGE("Noti [%s] deregistration failed", voice_call_state_tbl[i]);
-			}
 		}
 	} else if (noti_id == TELEPHONY_NOTI_VIDEO_CALL_STATE) {
 		int count = sizeof(video_call_state_tbl) / sizeof(char *);
 		for (i = 0; i < count; i++) {
 			ret = tel_deregister_noti_event(tapi_h, video_call_state_tbl[i]);
-			if (ret != TAPI_API_SUCCESS) {
+			if (ret != TAPI_API_SUCCESS)
 				LOGE("Noti [%s] deregistration failed", video_call_state_tbl[i]);
-			}
 		}
 	} else {
 		/* Deregister other notifications */
 		ret = tel_deregister_noti_event(tapi_h, tapi_noti);
-		if (ret != TAPI_API_SUCCESS) {
+		if (ret != TAPI_API_SUCCESS)
 			LOGE("Noti [%s] deregistration failed", tapi_noti);
-		}
 	}
 
 	return TELEPHONY_ERROR_NONE;
@@ -226,23 +259,56 @@ static void on_signal_callback(TapiHandle *tapi_h, const char *evt_id,
 	} else if (!g_strcmp0(evt_id, TAPI_PROP_NETWORK_SIGNALSTRENGTH_LEVEL)) {
 		int rssi = *(int *)data;
 		CALLBACK_CALL(&rssi);
+	} else if (!g_strcmp0(evt_id, TAPI_PROP_NETWORK_NETWORK_NAME)) {
+		char *network_name = data;
+		CALLBACK_CALL(network_name);
+	} else if (!g_strcmp0(evt_id, TAPI_PROP_NETWORK_PS_TYPE)) {
+		int ps_type = *(int *)data;
+		CALLBACK_CALL(&ps_type);
+	} else if (!g_strcmp0(evt_id, TAPI_NOTI_NETWORK_DEFAULT_DATA_SUBSCRIPTION)) {
+		int default_data_sub = *(int *)data;
+		CALLBACK_CALL(&default_data_sub);
+	} else if (!g_strcmp0(evt_id, TAPI_NOTI_NETWORK_DEFAULT_SUBSCRIPTION)) {
+		int default_sub = *(int *)data;
+		CALLBACK_CALL(&default_sub);
 	} else if (!g_strcmp0(evt_id, TAPI_NOTI_VOICE_CALL_STATUS_IDLE)
-			|| !g_strcmp0(evt_id, TAPI_NOTI_VOICE_CALL_STATUS_ACTIVE)
-			|| !g_strcmp0(evt_id, TAPI_NOTI_VOICE_CALL_STATUS_HELD)
-			|| !g_strcmp0(evt_id, TAPI_NOTI_VOICE_CALL_STATUS_DIALING)
-			|| !g_strcmp0(evt_id, TAPI_NOTI_VOICE_CALL_STATUS_ALERT)
-			|| !g_strcmp0(evt_id, TAPI_NOTI_VOICE_CALL_STATUS_INCOMING)) {
-		telephony_call_state_e call_state;
-		telephony_call_get_voice_call_state(evt_cb_data->handle, &call_state);
-		CALLBACK_CALL(&call_state);
-	} else if (!g_strcmp0(evt_id, TAPI_NOTI_VIDEO_CALL_STATUS_IDLE)
-			|| !g_strcmp0(evt_id, TAPI_NOTI_VIDEO_CALL_STATUS_ACTIVE)
-			|| !g_strcmp0(evt_id, TAPI_NOTI_VIDEO_CALL_STATUS_DIALING)
-			|| !g_strcmp0(evt_id, TAPI_NOTI_VIDEO_CALL_STATUS_ALERT)
+			|| !g_strcmp0(evt_id, TAPI_NOTI_VIDEO_CALL_STATUS_IDLE)) {
+		TelCallStatusIdleNoti_t *noti = data;
+		unsigned int handle_id = noti->id;
+		CALLBACK_CALL_FOR_DEPRECATED_NOTI(evt_cb_data);
+		CALLBACK_CALL(&handle_id);
+	} else if (!g_strcmp0(evt_id, TAPI_NOTI_VOICE_CALL_STATUS_ACTIVE)
+			|| !g_strcmp0(evt_id, TAPI_NOTI_VIDEO_CALL_STATUS_ACTIVE)) {
+		TelCallStatusActiveNoti_t *noti = data;
+		unsigned int handle_id = noti->id;
+		CALLBACK_CALL_FOR_DEPRECATED_NOTI(evt_cb_data);
+		CALLBACK_CALL(&handle_id);
+	} else if (!g_strcmp0(evt_id, TAPI_NOTI_VOICE_CALL_STATUS_HELD)) {
+		TelCallStatusHeldNoti_t *noti = data;
+		unsigned int handle_id = noti->id;
+		CALLBACK_CALL_FOR_DEPRECATED_NOTI(evt_cb_data);
+		CALLBACK_CALL(&handle_id);
+	} else if (!g_strcmp0(evt_id, TAPI_NOTI_VOICE_CALL_STATUS_DIALING)
+			|| !g_strcmp0(evt_id, TAPI_NOTI_VIDEO_CALL_STATUS_DIALING)) {
+		TelCallStatusDialingNoti_t *noti = data;
+		unsigned int handle_id = noti->id;
+		CALLBACK_CALL_FOR_DEPRECATED_NOTI(evt_cb_data);
+		CALLBACK_CALL(&handle_id);
+	} else if (!g_strcmp0(evt_id, TAPI_NOTI_VOICE_CALL_STATUS_ALERT)
+			|| !g_strcmp0(evt_id, TAPI_NOTI_VIDEO_CALL_STATUS_ALERT)) {
+		TelCallStatusAlertNoti_t *noti = data;
+		unsigned int handle_id = noti->id;
+		CALLBACK_CALL_FOR_DEPRECATED_NOTI(evt_cb_data);
+		CALLBACK_CALL(&handle_id);
+	} else if (!g_strcmp0(evt_id, TAPI_NOTI_VOICE_CALL_STATUS_INCOMING)
 			|| !g_strcmp0(evt_id, TAPI_NOTI_VIDEO_CALL_STATUS_INCOMING)) {
-		telephony_call_state_e call_state;
-		telephony_call_get_video_call_state(evt_cb_data->handle, &call_state);
-		CALLBACK_CALL(&call_state);
+		TelCallIncomingCallInfo_t *noti = data;
+		unsigned int handle_id = noti->CallHandle;
+		CALLBACK_CALL_FOR_DEPRECATED_NOTI(evt_cb_data);
+		CALLBACK_CALL(&handle_id);
+	} else if (!g_strcmp0(evt_id, TAPI_NOTI_CALL_PREFERRED_VOICE_SUBSCRIPTION)) {
+		int call_pref_voice_sub = *(int *)data;
+		CALLBACK_CALL(&call_pref_voice_sub);
 	} else {
 		LOGE("Unhandled noti: [%s]", evt_id);
 	}
@@ -358,7 +424,7 @@ int telephony_init(telephony_handle_list_s *list)
 	CHECK_TELEPHONY_SUPPORTED(TELEPHONY_FEATURE);
 	CHECK_INPUT_PARAMETER(list);
 
-#if !GLIB_CHECK_VERSION(2,35,0)
+#if !GLIB_CHECK_VERSION(2, 35, 0)
 	/* Need g_type_init() to use tel_get_cp_name_list() */
 	g_type_init();
 #endif
@@ -366,12 +432,12 @@ int telephony_init(telephony_handle_list_s *list)
 	cp_list = tel_get_cp_name_list();
 	if (cp_list == NULL) {
 		LOGE("cp_list is NULL");
+		list->count = 0;
 		return TELEPHONY_ERROR_OPERATION_FAILED;
 	}
 
-	while (cp_list[cp_count]) {
+	while (cp_list[cp_count])
 		cp_count++;
-	}
 
 	list->count = cp_count;
 	list->handle = g_malloc(cp_count * sizeof(telephony_h));
@@ -427,6 +493,51 @@ int telephony_deinit(telephony_handle_list_s *list)
 	g_free(list->handle);
 	list->handle = NULL;
 	list->count = 0;
+
+	return TELEPHONY_ERROR_NONE;
+}
+
+int telephony_get_state(telephony_state_e *state)
+{
+	int res = 0;
+	int value = 0;
+
+	CHECK_TELEPHONY_SUPPORTED(TELEPHONY_FEATURE);
+	CHECK_INPUT_PARAMETER(state);
+
+	res = tel_get_ready_state(&value);
+	if (res != TAPI_API_SUCCESS)
+		return TELEPHONY_ERROR_OPERATION_FAILED;
+
+	*state = value;
+
+	return TELEPHONY_ERROR_NONE;
+}
+
+int telephony_set_state_changed_cb(telephony_state_changed_cb callback, void *user_data)
+{
+	int res = 0;
+
+	CHECK_TELEPHONY_SUPPORTED(TELEPHONY_FEATURE);
+	CHECK_INPUT_PARAMETER(callback);
+
+	res = tel_register_ready_state_cb((tapi_state_cb)callback, user_data);
+	if (res != TAPI_API_SUCCESS)
+		return TELEPHONY_ERROR_OPERATION_FAILED;
+
+	return TELEPHONY_ERROR_NONE;
+}
+
+int telephony_unset_state_changed_cb(telephony_state_changed_cb callback)
+{
+	int res = 0;
+
+	CHECK_TELEPHONY_SUPPORTED(TELEPHONY_FEATURE);
+	CHECK_INPUT_PARAMETER(callback);
+
+	res = tel_deregister_ready_state_cb((tapi_state_cb)callback);
+	if (res != TAPI_API_SUCCESS)
+		return TELEPHONY_ERROR_OPERATION_FAILED;
 
 	return TELEPHONY_ERROR_NONE;
 }

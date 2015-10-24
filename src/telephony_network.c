@@ -20,6 +20,7 @@
 #include <glib.h>
 #include <dlog.h>
 #include <tapi_common.h>
+#include <ITapiNetwork.h>
 #include <TapiUtility.h>
 #include <TelNetwork.h>
 #include "telephony_network.h"
@@ -28,17 +29,6 @@
 
 #include <sys/types.h>
 #include <unistd.h>
-
-#ifdef LOG_TAG
-#undef LOG_TAG
-#endif
-#define LOG_TAG "CAPI_TELEPHONY"
-
-#define CHECK_INPUT_PARAMETER(arg) \
-	if (arg == NULL) { \
-		LOGE("INVALID_PARAMETER"); \
-		return TELEPHONY_ERROR_INVALID_PARAMETER; \
-	}
 
 int telephony_network_get_lac(telephony_h handle, int *lac)
 {
@@ -164,14 +154,14 @@ int telephony_network_get_mcc(telephony_h handle, char **mcc)
 
 	ret = tel_get_property_string(tapi_h, TAPI_PROP_NETWORK_PLMN, &plmn_str);
 	if (ret == TAPI_API_SUCCESS) {
-		*mcc = malloc (sizeof(char) * (mcc_length + 1));
+		*mcc = malloc(sizeof(char) * (mcc_length + 1));
 		if (*mcc == NULL) {
 			LOGE("OUT_OF_MEMORY");
 			ret = TELEPHONY_ERROR_OUT_OF_MEMORY;
 		} else {
-			memset (*mcc, 0x00, mcc_length + 1);
-			strncpy (*mcc, plmn_str, mcc_length);
-			free (plmn_str);
+			memset(*mcc, 0x00, mcc_length + 1);
+			strncpy(*mcc, plmn_str, mcc_length);
+			free(plmn_str);
 
 			LOGI("mcc:[%s]", *mcc);
 			ret = TELEPHONY_ERROR_NONE;
@@ -205,14 +195,14 @@ int telephony_network_get_mnc(telephony_h handle, char **mnc)
 		plmn_length = strlen(plmn_str);
 		LOGI("plmn:[%s], length:[%d]", plmn_str, plmn_length);
 
-		*mnc = malloc (sizeof(char) * (plmn_length -3 + 1));
+		*mnc = malloc(sizeof(char) * (plmn_length -3 + 1));
 		if (*mnc == NULL) {
 			LOGE("OUT_OF_MEMORY");
 			ret = TELEPHONY_ERROR_OUT_OF_MEMORY;
 		} else {
-			memset (*mnc, 0x00, (plmn_length -3 + 1));
-			strncpy (*mnc, plmn_str + 3, (plmn_length -3 + 1));
-			free (plmn_str);
+			memset(*mnc, 0x00, (plmn_length -3 + 1));
+			strncpy(*mnc, plmn_str + 3, (plmn_length -3 + 1));
+			free(plmn_str);
 
 			LOGI("mnc:[%s]", *mnc);
 			ret = TELEPHONY_ERROR_NONE;
@@ -242,6 +232,48 @@ int telephony_network_get_network_name(telephony_h handle, char **network_name)
 	ret = tel_get_property_string(tapi_h, TAPI_PROP_NETWORK_NETWORK_NAME, network_name);
 	if (ret == TAPI_API_SUCCESS) {
 		LOGI("network_name:[%s]", *network_name);
+		ret = TELEPHONY_ERROR_NONE;
+	} else if (ret == TAPI_API_ACCESS_DENIED) {
+		LOGE("PERMISSION_DENIED");
+		ret = TELEPHONY_ERROR_PERMISSION_DENIED;
+	} else {
+		LOGE("OPERATION_FAILED");
+		ret = TELEPHONY_ERROR_OPERATION_FAILED;
+	}
+
+	return ret;
+}
+
+int telephony_network_get_network_name_option(telephony_h handle, telephony_network_name_option_e *network_name_option)
+{
+	int ret;
+	int name_option = 0;
+	TapiHandle *tapi_h;
+
+	CHECK_TELEPHONY_SUPPORTED(TELEPHONY_FEATURE);
+	CHECK_INPUT_PARAMETER(handle);
+	tapi_h = ((telephony_data *)handle)->tapi_h;
+	CHECK_INPUT_PARAMETER(tapi_h);
+	CHECK_INPUT_PARAMETER(network_name_option);
+
+	ret = tel_get_property_int(tapi_h, TAPI_PROP_NETWORK_NAME_OPTION, &name_option);
+	if (ret == TAPI_API_SUCCESS) {
+		switch (name_option) {
+		case TAPI_NETWORK_NAME_OPTION_SPN:
+			*network_name_option = TELEPHONY_NETWORK_NAME_OPTION_SPN;
+			break;
+		case TAPI_NETWORK_NAME_OPTION_OPERATOR:
+			*network_name_option = TELEPHONY_NETWORK_NAME_OPTION_NETWORK;
+			break;
+		case TAPI_NETWORK_NAME_OPTION_ANY:
+			*network_name_option = TELEPHONY_NETWORK_NAME_OPTION_ANY;
+			break;
+		default:
+			*network_name_option = TELEPHONY_NETWORK_NAME_OPTION_UNKNOWN;
+			break;
+		}
+
+		LOGI("network_name_option:[%d]", *network_name_option);
 		ret = TELEPHONY_ERROR_NONE;
 	} else if (ret == TAPI_API_ACCESS_DENIED) {
 		LOGE("PERMISSION_DENIED");
@@ -305,6 +337,51 @@ int telephony_network_get_type(telephony_h handle, telephony_network_type_e *net
 	return ret;
 }
 
+int telephony_network_get_ps_type(telephony_h handle, telephony_network_ps_type_e *ps_type)
+{
+	int ret;
+	int service_type = 0;
+	TapiHandle *tapi_h;
+
+	CHECK_TELEPHONY_SUPPORTED(TELEPHONY_FEATURE);
+	CHECK_INPUT_PARAMETER(handle);
+	tapi_h = ((telephony_data *)handle)->tapi_h;
+	CHECK_INPUT_PARAMETER(tapi_h);
+	CHECK_INPUT_PARAMETER(ps_type);
+
+	ret = tel_get_property_int(tapi_h, TAPI_PROP_NETWORK_PS_TYPE, &service_type);
+	if (ret == TAPI_API_SUCCESS) {
+		switch (service_type) {
+		case TAPI_NETWORK_PS_TYPE_HSDPA:
+			*ps_type = TELEPHONY_NETWORK_PS_TYPE_HSDPA;
+			break;
+		case TAPI_NETWORK_PS_TYPE_HSUPA:
+			*ps_type = TELEPHONY_NETWORK_PS_TYPE_HSUPA;
+			break;
+		case TAPI_NETWORK_PS_TYPE_HSPA:
+			*ps_type = TELEPHONY_NETWORK_PS_TYPE_HSPA;
+			break;
+		case TAPI_NETWORK_PS_TYPE_HSPAP:
+			*ps_type = TELEPHONY_NETWORK_PS_TYPE_HSPAP;
+			break;
+		default:
+			*ps_type = TELEPHONY_NETWORK_PS_TYPE_UNKNOWN;
+			break;
+		}
+
+		LOGI("ps_type:[%d]", *ps_type);
+		ret = TELEPHONY_ERROR_NONE;
+	} else if (ret == TAPI_API_ACCESS_DENIED) {
+		LOGE("PERMISSION_DENIED");
+		ret = TELEPHONY_ERROR_PERMISSION_DENIED;
+	} else {
+		LOGE("OPERATION_FAILED");
+		ret = TELEPHONY_ERROR_OPERATION_FAILED;
+	}
+
+	return ret;
+}
+
 int telephony_network_get_service_state(telephony_h handle, telephony_network_service_state_e *network_service_state)
 {
 	int ret;
@@ -344,3 +421,84 @@ int telephony_network_get_service_state(telephony_h handle, telephony_network_se
 
 	return ret;
 }
+
+int telephony_network_get_default_data_subscription(telephony_h handle,
+	telephony_network_default_data_subs_e *default_data_sub)
+{
+	TapiHandle *tapi_h;
+	int ret;
+	TelNetworkDefaultDataSubs_t default_data_subscription = TAPI_NETWORK_DEFAULT_DATA_SUBS_UNKNOWN;
+
+	CHECK_TELEPHONY_SUPPORTED(TELEPHONY_FEATURE);
+	CHECK_INPUT_PARAMETER(handle);
+	tapi_h = ((telephony_data *)handle)->tapi_h;
+	CHECK_INPUT_PARAMETER(tapi_h);
+	CHECK_INPUT_PARAMETER(default_data_sub);
+
+	ret = tel_get_network_default_data_subscription(tapi_h,  &default_data_subscription);
+	if (ret == TAPI_API_SUCCESS) {
+		switch (default_data_subscription) {
+		case TAPI_NETWORK_DEFAULT_DATA_SUBS_SIM1:
+			*default_data_sub = TELEPHONY_NETWORK_DEFAULT_DATA_SUBS_SIM1;
+			break;
+		case TAPI_NETWORK_DEFAULT_DATA_SUBS_SIM2:
+			*default_data_sub = TELEPHONY_NETWORK_DEFAULT_DATA_SUBS_SIM2;
+			break;
+		case TAPI_NETWORK_DEFAULT_DATA_SUBS_UNKNOWN:
+		default:
+			*default_data_sub = TELEPHONY_NETWORK_DEFAULT_DATA_SUBS_UNKNOWN;
+			break;
+		}
+		LOGI("default data subscription: [%d]", *default_data_sub);
+		ret = TELEPHONY_ERROR_NONE;
+	} else if (ret == TAPI_API_ACCESS_DENIED) {
+		LOGE("PERMISSION_DENIED");
+		ret = TELEPHONY_ERROR_PERMISSION_DENIED;
+	} else {
+		LOGE("OPERATION_FAILED");
+		ret = TELEPHONY_ERROR_OPERATION_FAILED;
+	}
+
+	return ret;
+}
+
+int telephony_network_get_default_subscription(telephony_h handle,
+	telephony_network_default_subs_e *default_sub)
+{
+	TapiHandle *tapi_h;
+	int ret;
+	TelNetworkDefaultSubs_t default_subscription = TAPI_NETWORK_DEFAULT_SUBS_UNKNOWN;
+
+	CHECK_TELEPHONY_SUPPORTED(TELEPHONY_FEATURE);
+	CHECK_INPUT_PARAMETER(handle);
+	tapi_h = ((telephony_data *)handle)->tapi_h;
+	CHECK_INPUT_PARAMETER(tapi_h);
+	CHECK_INPUT_PARAMETER(default_sub);
+
+	ret = tel_get_network_default_subscription(tapi_h,  &default_subscription);
+	if (ret == TAPI_API_SUCCESS) {
+		switch (default_subscription) {
+		case TAPI_NETWORK_DEFAULT_SUBS_SIM1:
+			*default_sub = TELEPHONY_NETWORK_DEFAULT_SUBS_SIM1;
+			break;
+		case TAPI_NETWORK_DEFAULT_SUBS_SIM2:
+			*default_sub = TELEPHONY_NETWORK_DEFAULT_SUBS_SIM2;
+			break;
+		case TAPI_NETWORK_DEFAULT_SUBS_UNKNOWN:
+		default:
+			*default_sub = TELEPHONY_NETWORK_DEFAULT_SUBS_UNKNOWN;
+			break;
+		}
+		LOGI("default subscription: [%d]", *default_sub);
+		ret = TELEPHONY_ERROR_NONE;
+	} else if (ret == TAPI_API_ACCESS_DENIED) {
+		LOGE("PERMISSION_DENIED");
+		ret = TELEPHONY_ERROR_PERMISSION_DENIED;
+	} else {
+		LOGE("OPERATION_FAILED");
+		ret = TELEPHONY_ERROR_OPERATION_FAILED;
+	}
+
+	return ret;
+}
+

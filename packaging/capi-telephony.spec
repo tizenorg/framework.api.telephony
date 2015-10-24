@@ -1,6 +1,6 @@
 Name:       capi-telephony
 Summary:    Telephony Core API
-Version: 0.1.32
+Version:    0.1.53
 Release:    1
 Group:      System/Libraries
 License:    Apache-2.0
@@ -10,6 +10,7 @@ BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(tapi)
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(capi-base-common)
+BuildRequires:  pkgconfig(openssl)
 BuildRequires: pkgconfig(capi-system-info)
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
@@ -55,5 +56,3 @@ mkdir -p %{buildroot}/usr/share/license
 %{_includedir}/telephony/telephony_modem.h
 %{_libdir}/pkgconfig/*.pc
 %{_libdir}/libcapi-telephony.so
-
-
